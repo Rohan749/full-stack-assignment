@@ -1,73 +1,173 @@
-const express = require('express')
+import express from "express"
+import bodyParser from "body-parser";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
 const app = express()
-const port = 3001
+const port = 3000;
 
-const USERS = [];
+const USERS = [
+  {name: "admin", password: "123"},
+  {name: "user", password: "123"}
+];
 
-const QUESTIONS = [{
+const QUESTIONS = [
+  {
     title: "Two states",
     description: "Given an array , return the maximum of the array?",
     testCases: [{
         input: "[1,2,3,4,5]",
         output: "5"
     }]
-}];
+},
+{
+  title: "Two states",
+  description: "Given an array , return the maximum of the array?",
+  testCases: [{
+      input: "[1,2,3,4,5]",
+      output: "5"
+  }]
+},
+];
 
+const SUBMISSION = []
 
-const SUBMISSION = [
+app.use(bodyParser.urlencoded({ extended: true }))
 
-]
-
-app.post('/signup', function(req, res) {
-  // Add logic to decode body
-  // body should have email and password
-
-
-  //Store email and password (as is for now) in the USERS array above (only if the user with the given email doesnt exist)
-
-
-  // return back 200 status code to the client
-  res.send('Hello World!')
+app.get('/', (req, res) => {
+  res.sendFile(__dirname + "/public/index.html")
 })
 
+
+app.post('/signup', function(req, res) {
+  let name = req.body.name;
+  USERS.forEach(element => {
+    if(element.name === name) {
+      res.send("This name already exists. Try a different name")
+    }
+  });
+  USERS.push(req.body)
+  res.send(`Welcome ${name} to the community!`)
+  console.log(USERS)
+})
+
+
 app.post('/login', function(req, res) {
-  // Add logic to decode body
-  // body should have email and password
+  let name = req.body.name;
+  let password = req.body.password;
+  const user = USERS.find((user) => user.name === name);
 
-  // Check if the user with the given email exists in the USERS array
-  // Also ensure that the password is the same
+  if (!user || user.password !== password) {
+    return res.status(401).send('Invalid credentials.');
+  }
+  const token = Math.random().toString(36).substring(7);
 
+  console.log('Access token:', token)
+  res.send(`<html>
+  <body>
+  <h1>Welcome to the community</h1>
+  <h2>Name: ${name}</h2>
+  <a href="/questions">Questions</a>
+  </body>
+  <div>
+    ${name === 'admin' ? 
+    `<form method='post' action='/questions'>
+    <h2>Add a new problem statement:</h2>
+    <div><input name='title' placeholder='Title of the question:'/></div>
+    <div><input name='description' placeholder='Describe the question:' /></div>
+    <div><input name='testcase' placeholder='Enter the testcases:'/></div>
+    <div><input name='output' placeholder='Enter the expected output:' /></div>
+    <h3>
+    <button type='submit'>Add this question to the list.</button>
+    </h3>
+    </form>`:'<div />'}
+  </div>
+</html>`)
+})
 
-  // If the password is the same, return back 200 status code to the client
-  // Also send back a token (any random string will do for now)
-  // If the password is not the same, return back 401 status code to the client
+app.post('/questions', (req, res) => {
+  res.send(`
+  This question is posted. <a href="/questions">Checkout in the Problems list.</a>
+  `)
+  console.log(req.body.title)
+  QUESTIONS.push(
+    {
+      title: req.body.title,
+      description: req.body.description,
+      testCases: [{
+        input: req.body.testcase,
+        output: req.body.output
+      }]
+    }
+  )
 
-
-  res.send('Hello World from route 2!')
 })
 
 app.get('/questions', function(req, res) {
 
-  //return the user all the questions in the QUESTIONS array
-  res.send("Hello World from route 3!")
+  const questionData = ` <html>
+  <head>
+    <title>Questions</title>
+  </head>
+  <body>
+    <h1>Questions List</h1>
+    <ul>
+      ${QUESTIONS.map((question) => `
+        <li>
+          <h2>${question.title}</h2>
+          <p>${question.description}</p>
+          <h3>Test Cases:</h3>
+          <ul>
+            ${question.testCases.map((testCase) => `
+              <li>
+                <strong>Input:</strong> ${testCase.input}<br>
+                <strong>Output:</strong> ${testCase.output} <br>
+                <a href="/submissions">
+                <button>Submit your answer</button>
+                </a>
+              </li>
+            `)}
+          </ul>
+        </li>
+      `)}
+    </ul>
+  </body>
+  </html>`
+  res.send(questionData)
 })
 
+
 app.get("/submissions", function(req, res) {
-   // return the users submissions for this problem
-  res.send("Hello World from route 4!")
+  
+  res.send(`<html>
+  <form method="post" action="/submissions">
+    <textarea name="answer" id="answerid"
+    style="width: 100%; 
+    height: 200px; 
+    padding: 10px; 
+    font-size: 16px;"
+    >type your code</textarea>
+    <button type="submit">Submit</button>
+    </form>
+  </html>`)
+
 });
 
 
 app.post("/submissions", function(req, res) {
-   // let the user submit a problem, randomly accept or reject the solution
-   // Store the submission in the SUBMISSION array above
-  res.send("Hello World from route 4!")
-});
 
-// leaving as hard todos
-// Create a route that lets an admin add a new problem
-// ensure that only admins can do that.
+  const status = Math.random() < 0.5;
+  const acceptedStatement = status ? "Your answer is accepted" : "Wrong answer. Please try again."
+
+  SUBMISSION.push(req.body)
+  console.log(SUBMISSION)
+  
+  res.send(acceptedStatement)
+
+});
 
 app.listen(port, function() {
   console.log(`Example app listening on port ${port}`)
+  console.log(USERS)
 })
